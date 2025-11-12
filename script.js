@@ -1,53 +1,58 @@
-/ Mobile Navigation
+// Mobile Navigation
 const hamburger = document.getElementById('hamburger');
 const navMenu = document.getElementById('navMenu');
 
-hamburger.addEventListener('click', () => {
-    navMenu.classList.toggle('active');
-});
-
-// Close menu when clicking on a link
-document.querySelectorAll('.nav-menu a').forEach(link => {
-    link.addEventListener('click', () => {
-        navMenu.classList.remove('active');
+if (hamburger && navMenu) {
+    hamburger.addEventListener('click', () => {
+        navMenu.classList.toggle('active');
     });
-});
+
+    // Close menu when clicking on a link
+    document.querySelectorAll('.nav-menu a').forEach(link => {
+        link.addEventListener('click', () => {
+            navMenu.classList.remove('active');
+        });
+    });
+}
 
 // Three.js Globe Animation
 function initGlobe() {
     const canvas = document.getElementById('globe-canvas');
-    if (!canvas) return;
+    if (!canvas || typeof THREE === 'undefined') {
+        console.error('Canvas or Three.js not found');
+        return;
+    }
 
     const scene = new THREE.Scene();
     const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
     const renderer = new THREE.WebGLRenderer({ canvas, alpha: true, antialias: true });
     
     renderer.setSize(window.innerWidth, window.innerHeight);
-    renderer.setPixelRatio(window.devicePixelRatio);
+    renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+    renderer.setClearColor(0x000000, 0);
 
-    // Create globe
-    const geometry = new THREE.SphereGeometry(5, 64, 64);
+    // Create globe with wireframe
+    const geometry = new THREE.SphereGeometry(5, 50, 50);
     
-    // Create custom material with wireframe
     const material = new THREE.MeshBasicMaterial({
-        color: 0x00f0ff,
+        color: 0x1e90ff,
         wireframe: true,
         transparent: true,
-        opacity: 0.15
+        opacity: 0.3
     });
     
     const globe = new THREE.Mesh(geometry, material);
     scene.add(globe);
 
-    // Add points (cities/locations)
+    // Add glowing points
     const pointsGeometry = new THREE.BufferGeometry();
-    const pointsCount = 1000;
+    const pointsCount = 2000;
     const positions = new Float32Array(pointsCount * 3);
     
     for (let i = 0; i < pointsCount * 3; i += 3) {
         const theta = Math.random() * Math.PI * 2;
-        const phi = Math.acos(Math.random() * 2 - 1);
-        const radius = 5.01;
+        const phi = Math.acos((Math.random() * 2) - 1);
+        const radius = 5.05;
         
         positions[i] = radius * Math.sin(phi) * Math.cos(theta);
         positions[i + 1] = radius * Math.sin(phi) * Math.sin(theta);
@@ -57,33 +62,33 @@ function initGlobe() {
     pointsGeometry.setAttribute('position', new THREE.BufferAttribute(positions, 3));
     
     const pointsMaterial = new THREE.PointsMaterial({
-        color: 0x00f0ff,
-        size: 0.05,
+        color: 0x1e90ff,
+        size: 0.08,
         transparent: true,
-        opacity: 0.8
+        opacity: 0.6,
+        blending: THREE.AdditiveBlending
     });
     
     const points = new THREE.Points(pointsGeometry, pointsMaterial);
     scene.add(points);
 
-    // Add ambient glow
-    const glowGeometry = new THREE.SphereGeometry(5.5, 64, 64);
+    // Add outer glow
+    const glowGeometry = new THREE.SphereGeometry(5.5, 50, 50);
     const glowMaterial = new THREE.MeshBasicMaterial({
-        color: 0x00f0ff,
+        color: 0x1e90ff,
         transparent: true,
-        opacity: 0.05,
-        side: THREE.BackSide
+        opacity: 0.1,
+        side: THREE.BackSide,
+        blending: THREE.AdditiveBlending
     });
     const glow = new THREE.Mesh(glowGeometry, glowMaterial);
     scene.add(glow);
 
-    camera.position.z = 15;
+    camera.position.z = 12;
 
     // Mouse interaction
     let mouseX = 0;
     let mouseY = 0;
-    let targetX = 0;
-    let targetY = 0;
 
     document.addEventListener('mousemove', (e) => {
         mouseX = (e.clientX / window.innerWidth) * 2 - 1;
@@ -94,14 +99,16 @@ function initGlobe() {
     function animate() {
         requestAnimationFrame(animate);
 
-        // Smooth mouse follow
-        targetX = mouseX * 0.3;
-        targetY = mouseY * 0.3;
+        // Auto rotation
+        globe.rotation.y += 0.001;
+        globe.rotation.x += 0.0005;
 
-        globe.rotation.x += 0.001;
-        globe.rotation.y += 0.002;
-        globe.rotation.x += (targetY - globe.rotation.x) * 0.05;
-        globe.rotation.y += (targetX - globe.rotation.y) * 0.05;
+        // Mouse influence
+        const targetRotationY = mouseX * 0.3;
+        const targetRotationX = mouseY * 0.3;
+        
+        globe.rotation.y += (targetRotationY - globe.rotation.y) * 0.02;
+        globe.rotation.x += (targetRotationX - globe.rotation.x) * 0.02;
 
         points.rotation.x = globe.rotation.x;
         points.rotation.y = globe.rotation.y;
@@ -119,56 +126,85 @@ function initGlobe() {
         camera.aspect = window.innerWidth / window.innerHeight;
         camera.updateProjectionMatrix();
         renderer.setSize(window.innerWidth, window.innerHeight);
+        renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
     });
 }
 
 // Initialize globe when page loads
-window.addEventListener('load', initGlobe);
-
-// Animated counters
-function animateCounter(element, target, duration = 2000) {
-    const start = 0;
-    const increment = target / (duration / 16);
-    let current = start;
-
-    const timer = setInterval(() => {
-        current += increment;
-        if (current >= target) {
-            element.textContent = target;
-            clearInterval(timer);
-        } else {
-            element.textContent = Math.floor(current);
-        }
-    }, 16);
+if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', () => {
+        setTimeout(initGlobe, 100);
+    });
+} else {
+    setTimeout(initGlobe, 100);
 }
 
-// Intersection Observer for animations
-const observerOptions = {
-    threshold: 0.2,
-    rootMargin: '0px 0px -100px 0px'
-};
+// Animated counters for hero stats
+function animateCounter(element) {
+    const target = parseFloat(element.getAttribute('data-target'));
+    const duration = 2000;
+    const increment = target / (duration / 16);
+    let current = 0;
 
-const observer = new IntersectionObserver((entries) => {
-    entries.forEach(entry => {
-        if (entry.isIntersecting) {
-            entry.target.style.animation = 'fadeInUp 0.6s ease-out forwards';
-            
-            // Animate counters when hero section is visible
-            if (entry.target.classList.contains('hero')) {
-                const counters = document.querySelectorAll('.stat-number');
-                counters.forEach(counter => {
-                    const target = parseFloat(counter.dataset.target);
-                    animateCounter(counter, target);
-                });
+    const updateCounter = () => {
+        current += increment;
+        if (current < target) {
+            if (target >= 100) {
+                element.textContent = Math.floor(current);
+            } else {
+                element.textContent = current.toFixed(1);
+            }
+            requestAnimationFrame(updateCounter);
+        } else {
+            if (target >= 100) {
+                element.textContent = Math.floor(target);
+            } else {
+                element.textContent = target;
             }
         }
-    });
-}, observerOptions);
+    };
 
-// Observe sections
-document.addEventListener('DOMContentLoaded', () => {
-    const sections = document.querySelectorAll('.service-card, .sdg-card, .client-card, .hero');
-    sections.forEach(section => observer.observe(section));
+    updateCounter();
+}
+
+// Trigger counter animation when hero is in view
+const heroObserver = new IntersectionObserver((entries) => {
+    entries.forEach(entry => {
+        if (entry.isIntersecting) {
+            const counters = document.querySelectorAll('.stat-number');
+            counters.forEach(counter => {
+                animateCounter(counter);
+            });
+            heroObserver.unobserve(entry.target);
+        }
+    });
+}, { threshold: 0.5 });
+
+const heroSection = document.querySelector('.hero');
+if (heroSection) {
+    heroObserver.observe(heroSection);
+}
+
+// Intersection Observer for fade-in animations
+const fadeInObserver = new IntersectionObserver((entries) => {
+    entries.forEach(entry => {
+        if (entry.isIntersecting) {
+            entry.target.style.opacity = '1';
+            entry.target.style.transform = 'translateY(0)';
+            fadeInObserver.unobserve(entry.target);
+        }
+    });
+}, {
+    threshold: 0.1,
+    rootMargin: '0px 0px -50px 0px'
+});
+
+// Apply fade-in to all cards
+document.querySelectorAll('.service-card, .sdg-card, .client-card').forEach(card => {
+    card.style.opacity = '0';
+    card.style.transform = 'translateY(30px)';
+    card.style.transition = 'opacity 0.6s ease, transform 0.6s ease';
+    fadeInObserver.observe(card);
 });
 
 // Smooth scrolling for navigation links
@@ -177,133 +213,110 @@ document.querySelectorAll('a[href^="#"]').forEach(anchor => {
         e.preventDefault();
         const target = document.querySelector(this.getAttribute('href'));
         if (target) {
-            target.scrollIntoView({
-                behavior: 'smooth',
-                block: 'start'
+            const navHeight = document.querySelector('.navbar').offsetHeight;
+            const targetPosition = target.offsetTop - navHeight;
+            
+            window.scrollTo({
+                top: targetPosition,
+                behavior: 'smooth'
             });
         }
     });
 });
 
-// Form submission
+// Form submission handler
 const contactForm = document.getElementById('contactForm');
 if (contactForm) {
     contactForm.addEventListener('submit', (e) => {
         e.preventDefault();
         
-        // Get form data
-        const formData = new FormData(contactForm);
-        
-        // Show success message (you can replace this with actual form submission)
         alert('Thank you for your message! We will get back to you soon.');
         contactForm.reset();
-        
-        // In production, you would send this to a backend:
-        // fetch('/api/contact', {
-        //     method: 'POST',
-        //     body: formData
-        // }).then(response => response.json())
-        //   .then(data => console.log(data));
     });
 }
 
-// Parallax effect on scroll
-let scrollPos = 0;
+// Parallax effect on hero content
+let lastScroll = 0;
 window.addEventListener('scroll', () => {
-    scrollPos = window.pageYOffset;
+    const scrollPos = window.pageYOffset;
     
-    // Parallax for hero content
     const heroContent = document.querySelector('.hero-content');
-    if (heroContent) {
-        heroContent.style.transform = `translateY(${scrollPos * 0.5}px)`;
-        heroContent.style.opacity = 1 - scrollPos / 700;
+    if (heroContent && scrollPos < window.innerHeight) {
+        heroContent.style.transform = `translateY(${scrollPos * 0.3}px)`;
+        heroContent.style.opacity = Math.max(0, 1 - scrollPos / 600);
     }
+
+    lastScroll = scrollPos;
 });
 
-// Add active state to navigation on scroll
+// Active navigation highlighting
 window.addEventListener('scroll', () => {
     const sections = document.querySelectorAll('section[id]');
     const navLinks = document.querySelectorAll('.nav-menu a');
     
     let current = '';
+    const scrollPos = window.pageYOffset + 100;
+    
     sections.forEach(section => {
         const sectionTop = section.offsetTop;
         const sectionHeight = section.clientHeight;
-        if (window.pageYOffset >= sectionTop - 200) {
+        
+        if (scrollPos >= sectionTop && scrollPos < sectionTop + sectionHeight) {
             current = section.getAttribute('id');
         }
     });
     
     navLinks.forEach(link => {
         link.classList.remove('active');
-        if (link.getAttribute('href').slice(1) === current) {
+        if (link.getAttribute('href') === `#${current}`) {
             link.classList.add('active');
         }
     });
 });
 
-// Add loading animation
+// Add loading fade-in effect
 window.addEventListener('load', () => {
     document.body.style.opacity = '0';
-    setTimeout(() => {
-        document.body.style.transition = 'opacity 0.5s';
+    document.body.style.transition = 'opacity 0.5s ease';
+    
+    requestAnimationFrame(() => {
         document.body.style.opacity = '1';
-    }, 100);
+    });
 });
 
-// Image lazy loading optimization
-if ('loading' in HTMLImageElement.prototype) {
-    const images = document.querySelectorAll('img');
-    images.forEach(img => {
-        img.loading = 'lazy';
+// Lazy loading for images
+if ('IntersectionObserver' in window) {
+    const imageObserver = new IntersectionObserver((entries) => {
+        entries.forEach(entry => {
+            if (entry.isIntersecting) {
+                const img = entry.target;
+                if (img.dataset.src) {
+                    img.src = img.dataset.src;
+                    img.removeAttribute('data-src');
+                }
+                imageObserver.unobserve(img);
+            }
+        });
+    });
+
+    document.querySelectorAll('img[data-src]').forEach(img => {
+        imageObserver.observe(img);
     });
 }
 
-// Add cursor trail effect (optional, can be removed if too heavy)
-const coords = { x: 0, y: 0 };
-const circles = document.querySelectorAll('.circle');
-
-if (window.innerWidth > 768) {
-    // Only on desktop
-    window.addEventListener('mousemove', (e) => {
-        coords.x = e.clientX;
-        coords.y = e.clientY;
-    });
-}
-
-// Glitch effect for hero title
-const glitchText = document.querySelector('.glitch');
-if (glitchText) {
-    setInterval(() => {
-        if (Math.random() > 0.95) {
-            glitchText.style.textShadow = `
-                ${Math.random() * 10 - 5}px ${Math.random() * 10 - 5}px 0 rgba(0, 240, 255, 0.7),
-                ${Math.random() * 10 - 5}px ${Math.random() * 10 - 5}px 0 rgba(255, 0, 229, 0.7)
-            `;
-            setTimeout(() => {
-                glitchText.style.textShadow = 'none';
-            }, 50);
-        }
-    }, 100);
-}
-
-// Performance optimization: Disable animations on low-end devices
-if (navigator.hardwareConcurrency && navigator.hardwareConcurrency < 4) {
-    document.documentElement.style.setProperty('--animation-duration', '0s');
-}
-
-// Add viewport height fix for mobile browsers
-function setVH() {
+// Viewport height fix for mobile
+function setViewportHeight() {
     const vh = window.innerHeight * 0.01;
     document.documentElement.style.setProperty('--vh', `${vh}px`);
 }
 
-setVH();
-window.addEventListener('resize', setVH);
+setViewportHeight();
+window.addEventListener('resize', setViewportHeight);
 
-// Service worker for PWA (optional)
-if ('serviceWorker' in navigator) {
-    window.addEventListener('load', () => {
-        // navigator.serviceWorker.register('/sw.js');
-    });
+// Performance optimization for low-end devices
+if (navigator.hardwareConcurrency && navigator.hardwareConcurrency < 4) {
+    // Reduce animation complexity on low-end devices
+    document.documentElement.classList.add('reduced-motion');
 }
+
+console.log('Indian Dynamics website loaded successfully!');
